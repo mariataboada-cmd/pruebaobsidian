@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="es">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=1920, height=1080" />
+    <script src="vendor/gsap.min.js"></script>
+    <style>
+      * { margin: 0; padding: 0; box-sizing: border-box; }
+      html, body {
+        width: 1920px; height: 1080px; overflow: hidden;
+        background: radial-gradient(circle at 50% 40%, #1e1b4b 0%, #0a0a0a 70%);
+      }
+      #root {
+        width: 100%; height: 100%;
+        display: flex; flex-direction: column; align-items: center; justify-content: center;
+        font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+      }
+      #stack { position: absolute; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+      #title { color: #f4f4f5; font-size: 140px; font-weight: 800; letter-spacing: -0.04em; display: flex; }
+      #title .ch { display: inline-block; }
+      #bar { width: 0; height: 8px; margin-top: 28px; border-radius: 4px; background: linear-gradient(90deg, #8b5cf6, #ec4899); }
+      #subtitle { color: #a1a1aa; font-size: 44px; font-weight: 500; margin-top: 32px; opacity: 0; }
+    </style>
+  </head>
+  <body>
+    <div id="root" data-composition-id="main" data-start="0" data-duration="5" data-width="1920" data-height="1080">
+      <div id="stack" class="clip" data-start="0" data-duration="5" data-track-index="0">
+      <h1 id="title">
+        <span class="ch">H</span><span class="ch">y</span><span class="ch">p</span><span class="ch">e</span><span class="ch">r</span><span class="ch">F</span><span class="ch">r</span><span class="ch">a</span><span class="ch">m</span><span class="ch">e</span><span class="ch">s</span>
+      </h1>
+      <div id="bar"></div>
+      <p id="subtitle">Vídeo de prueba · test-video</p>
+      </div>
+    </div>
+    <script>
+      const tl = gsap.timeline({ paused: true });
+      tl.fromTo("#title .ch", { opacity: 0, y: 120, rotate: -12 },
+        { opacity: 1, y: 0, rotate: 0, duration: 0.7, ease: "back.out(1.7)", stagger: 0.06 }, 0.2);
+      tl.to("#bar", { width: 760, duration: 0.8, ease: "power3.out" }, 1.1);
+      tl.to("#subtitle", { opacity: 1, y: -10, duration: 0.6, ease: "power2.out" }, 1.5);
+      tl.to("#title", { scale: 1.05, duration: 2, ease: "sine.inOut" }, 2.2);
+      tl.to(["#title", "#bar", "#subtitle"], { opacity: 0, duration: 0.5, ease: "power2.in" }, 4.4);
+      window.__timelines["main"] = tl;
+      tl.seek(0);
+    </script>
+  </body>
+</html>
