@@ -63,7 +63,6 @@
     <script type="module">
       import * as THREE from "three";
       import { RoomEnvironment } from "three/addons/RoomEnvironment.js";
-      import { MarchingCubes } from "three/addons/MarchingCubes.js";
 
       // ---------------------------------------------------------------------
       // Timing. The hover section is periodic with LOOP seconds from LOOP_START
@@ -200,62 +199,28 @@
       scene.add(shadow);
 
       // ---------------------------------------------------------------------
-      // Gummy bear geometry: smooth-union SDF polygonised with marching cubes
+      // Gummy geometry: round gummy with a flat base and a narrower flat top
+      // (a rounded truncated cone), built as a lathe.
       // ---------------------------------------------------------------------
       function buildGummyGeometry() {
-        const res = 64;
-        const mc = new MarchingCubes(res, new THREE.MeshBasicMaterial(), false, false, 60000);
-        mc.isolation = 0;
-        const parts = [
-          // [cx, cy, cz, rx, ry, rz]
-          [0, -0.17, 0, 0.37, 0.42, 0.27], // belly
-          [0, 0.37, 0, 0.34, 0.29, 0.26], // head
-          [0.25, 0.61, -0.02, 0.11, 0.11, 0.09], // ears
-          [-0.25, 0.61, -0.02, 0.11, 0.11, 0.09],
-          [0, 0.31, 0.2, 0.12, 0.09, 0.08], // snout
-          [0.33, 0.02, 0.04, 0.14, 0.18, 0.13], // arms
-          [-0.33, 0.02, 0.04, 0.14, 0.18, 0.13],
-          [0.2, -0.55, 0.03, 0.17, 0.16, 0.16], // legs
-          [-0.2, -0.55, 0.03, 0.17, 0.16, 0.16],
-        ];
-        const k = 0.09;
-        const smin = (a, b) => {
-          const h = Math.max(k - Math.abs(a - b), 0) / k;
-          return Math.min(a, b) - h * h * k * 0.25;
-        };
-        const size = mc.size;
-        const half = mc.halfsize;
-        for (let z = 0; z < size; z++) {
-          for (let y = 0; y < size; y++) {
-            for (let x = 0; x < size; x++) {
-              const px = (x - half) / half;
-              const py = (y - half) / half;
-              const pz = (z - half) / half;
-              let d = 1e9;
-              for (const [cx, cy, cz, rx, ry, rz] of parts) {
-                const qx = (px - cx) / rx;
-                const qy = (py - cy) / ry;
-                const qz = (pz - cz) / rz;
-                const e = (Math.sqrt(qx * qx + qy * qy + qz * qz) - 1) * Math.min(rx, ry, rz);
-                d = smin(d, e);
-              }
-              mc.field[x + y * size + z * mc.size2] = -d;
-            }
+        const rBase = 0.28;
+        const rTop = 0.2;
+        const h = 0.3;
+        const cBase = 0.085; // corner rounding at the base
+        const cTop = 0.08; // corner rounding at the top
+        const slant = Math.atan2(rBase - rTop, h);
+        const pts = [new THREE.Vector2(0, -h / 2)];
+        const arc = (cx, cy, r, a0, a1, n) => {
+          for (let i = 0; i <= n; i++) {
+            const a = a0 + ((a1 - a0) * i) / n;
+            pts.push(new THREE.Vector2(cx + Math.cos(a) * r, cy + Math.sin(a) * r));
           }
-        }
-        mc.update();
-        const n = mc.count;
-        const geo = new THREE.BufferGeometry();
-        geo.setAttribute("position", new THREE.BufferAttribute(mc.positionArray.slice(0, n * 3), 3));
-        const normals = mc.normalArray.slice(0, n * 3);
-        for (let i = 0; i < n; i++) {
-          const l = Math.hypot(normals[i * 3], normals[i * 3 + 1], normals[i * 3 + 2]) || 1;
-          normals[i * 3] /= l;
-          normals[i * 3 + 1] /= l;
-          normals[i * 3 + 2] /= l;
-        }
-        geo.setAttribute("normal", new THREE.BufferAttribute(normals, 3));
-        geo.scale(0.36, 0.36, 0.36); // ~0.52 units tall, as in the photo
+        };
+        arc(rBase - cBase, -h / 2 + cBase, cBase, -Math.PI / 2, slant, 12);
+        arc(rTop - cTop * Math.cos(slant), h / 2 - cTop, cTop, slant, Math.PI / 2, 12);
+        pts.push(new THREE.Vector2(0, h / 2));
+        const geo = new THREE.LatheGeometry(pts, 96);
+        geo.computeVertexNormals();
         return geo;
       }
       const gummyGeo = buildGummyGeometry();
@@ -484,9 +449,9 @@
       // The three hero gummies
       // ---------------------------------------------------------------------
       const heroes = [
-        { base: [-0.92, 2.25, 0.3], yaw: -0.5, dir: 1, phase: 0.0, tilt: 0.18 },
-        { base: [0.04, 2.78, 0.6], yaw: 0.1, dir: -1, phase: 2.1, tilt: -0.12 },
-        { base: [0.95, 2.2, 0.2], yaw: 0.6, dir: 1, phase: 4.2, tilt: 0.1 },
+        { base: [-0.92, 2.25, 0.3], yaw: -0.5, dir: 1, phase: 0.0, tilt: 0.3, roll: 0.16 },
+        { base: [0.04, 2.78, 0.6], yaw: 0.1, dir: -1, phase: 2.1, tilt: 0.22, roll: -0.06 },
+        { base: [0.95, 2.2, 0.2], yaw: 0.6, dir: 1, phase: 4.2, tilt: 0.32, roll: -0.18 },
       ].map((h) => {
         const mesh = new THREE.Mesh(gummyGeo, heroGummyMat);
         mesh.scale.setScalar(1.6);
@@ -545,9 +510,9 @@
           x: bx + 0.035 * wave(t, LOOP, h.phase + 1),
           y: by + 0.085 * wave(t, LOOP / 2, h.phase),
           z: bz + 0.03 * wave(t, LOOP, h.phase + 2),
-          rx: h.tilt + 0.16 * wave(t, LOOP / 2, h.phase + 0.5),
+          rx: h.tilt + 0.08 * wave(t, LOOP / 2, h.phase + 0.5),
           ry: h.yaw + (h.dir * TAU * t) / LOOP,
-          rz: 0.12 * wave(t, LOOP, h.phase + 1.3),
+          rz: h.roll + 0.1 * wave(t, LOOP, h.phase + 1.3),
         };
       }
 
